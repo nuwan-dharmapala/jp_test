@@ -1,6 +1,7 @@
 <?php
 namespace App\Controller;
 
+use Authy\AuthyApi as AuthyApi;
 use App\Controller\AppController;
 
 /**
@@ -54,14 +55,27 @@ class UsersController extends AppController
     public function add()
     {
         $user = $this->Users->newEntity();
-        if ($this->request->is('post')) {
-            $user = $this->Users->patchEntity($user, $this->request->data);
-            if ($this->Users->save($user)) {
-                $this->Flash->success(__('The user has been saved.'));
+        if ($this->request->is('post')) {            
+            $email = $this->request->data['email'];
+            $phone = $this->request->data['phone'];
+            
+            $authy_api = new AuthyApi(getenv('AUTHY_API_KEY'));
+            $authy_user = $authy_api->registerUser($email, $phone, '94');
 
-                return $this->redirect(['action' => 'index']);
+            if($user->ok()) {
+                $user = $this->Users->patchEntity($user, $this->request->data);
+                $user['authy_id'] = $authy_user->id();
+                
+                if ($this->Users->save($user)) {
+                    $this->Flash->success(__('The user has been saved.'));
+
+                    return $this->redirect(['action' => 'index']);
+                } else {
+                    $this->Flash->error(__('The user could not be saved. Please, try again.'));
+                }
             } else {
                 $this->Flash->error(__('The user could not be saved. Please, try again.'));
+                return false;
             }
         }
         $this->set(compact('user'));

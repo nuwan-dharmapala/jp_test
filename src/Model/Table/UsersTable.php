@@ -59,6 +59,10 @@ class UsersTable extends Table
         $validator
             ->requirePresence('password', 'create')
             ->notEmpty('password');
+        
+        $validator
+            ->requirePresence('phone', 'create')
+            ->notEmpty('phone');
 
         return $validator;
     }
@@ -73,6 +77,7 @@ class UsersTable extends Table
     public function buildRules(RulesChecker $rules)
     {
         $rules->add($rules->isUnique(['email']));
+        $rules->add($rules->isUnique(['phone']));
 
         return $rules;
     }
