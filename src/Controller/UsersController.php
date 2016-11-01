@@ -3,6 +3,7 @@ namespace App\Controller;
 
 use Authy\AuthyApi as AuthyApi;
 use App\Controller\AppController;
+use Cake\Core\Configure;
 
 /**
  * Users Controller
@@ -54,32 +55,37 @@ class UsersController extends AppController
      */
     public function add()
     {
+        
+        if (!$this->request->is('post')) {       
+            $this->set(compact('user'));
+            $this->set('_serialize', ['user']);
+            return;
+        }
+        
         $user = $this->Users->newEntity();
-        if ($this->request->is('post')) {            
-            $email = $this->request->data['email'];
-            $phone = $this->request->data['phone'];
-            
-            $authy_api = new AuthyApi(getenv('AUTHY_API_KEY'));
-            $authy_user = $authy_api->registerUser($email, $phone, '94');
+        
+        $email = $this->request->data['email'];
+        $phone = $this->request->data['phone'];
+        $authy_api_key = Configure::read('authy_api_key');
 
-            if($user->ok()) {
-                $user = $this->Users->patchEntity($user, $this->request->data);
-                $user['authy_id'] = $authy_user->id();
-                
-                if ($this->Users->save($user)) {
-                    $this->Flash->success(__('The user has been saved.'));
+        $authy_api = new AuthyApi($authy_api_key);
+        $authy_user = $authy_api->registerUser($email, $phone, '94');
 
-                    return $this->redirect(['action' => 'index']);
-                } else {
-                    $this->Flash->error(__('The user could not be saved. Please, try again.'));
-                }
+        if($authy_user->ok()) {
+            $user = $this->Users->patchEntity($user, $this->request->data);
+            $user['authy_id'] = $authy_user->id();
+
+            if ($this->Users->save($user)) {
+                $this->Flash->success(__('The user has been saved.'));
+
+                return $this->redirect(['action' => 'index']);
             } else {
                 $this->Flash->error(__('The user could not be saved. Please, try again.'));
-                return false;
             }
+        } else {
+            var_dump($authy_user);
+            $this->Flash->error(__('The Authy user could not be saved. Please, try again.'));
         }
-        $this->set(compact('user'));
-        $this->set('_serialize', ['user']);
     }
 
     /**
