@@ -16,7 +16,8 @@ class UsersController extends AppController
     public function initialize()
     {
         parent::initialize();
-        $this->Auth->allow(['logout', 'add', 'authyCallback']);
+        $this->Auth->allow(['logout', 'add', 'authyCallback', 'loginAjax', 'authyStatus']);
+        $this->loadComponent('RequestHandler');
     }
 
     /**
@@ -139,6 +140,15 @@ class UsersController extends AppController
      */
     public function login()
     {
+    }
+          
+    /**
+     * Signin method Ajax
+     * 
+     * @return \Cake\Network\Response
+     */
+    public function loginAjax()
+    {
         if ($this->request->is('post')) {
             $user = $this->Auth->identify();
             if ($user) {
@@ -161,13 +171,15 @@ class UsersController extends AppController
                 
                 $ch = curl_init();
                 curl_setopt_array($ch, $defaults);
-                curl_exec($ch);
+                $output = curl_exec($ch);
                 curl_close($ch);
                 
-                $this->Auth->setUser($user);
-                return $this->redirect($this->Auth->redirectUrl());
+                $session = $this->request->session();
+                $session->write('Authy.Id', $user->authy_id);
+                
+                echo $output;
+                exit;
             }
-            $this->Flash->error('Your username or password is incorrect.');
         }
     }
     
@@ -207,5 +219,31 @@ class UsersController extends AppController
         }
         
         exit;
+    }
+    
+    public function authyStatus() {
+        $session = $this->request->session();
+        $authy_id = $session->read('Authy.Id');
+        
+        $query =  $this->Users->findByAuthyId($authy_id);
+        $results = $query->all();
+
+        $user = NULL;
+        $output = [];
+        
+        if (!$results->isEmpty()) {
+            $records = $results->toArray();
+            $user = array_shift($records);
+            
+            if($user->authy_status == 'approved') {
+                $this->Auth->setUser($user);
+            }
+            
+            $output = ['status' => $user->authy_status];
+        }
+        
+        $this->viewBuilder()->layout = 'ajax';
+        $this->set(compact('output'));
+        $this->set('_serialize', 'output');
     }
 }
