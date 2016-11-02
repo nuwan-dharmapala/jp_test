@@ -4,6 +4,7 @@ namespace App\Controller;
 use Authy\AuthyApi as AuthyApi;
 use App\Controller\AppController;
 use Cake\Core\Configure;
+use Cake\ORM\TableRegistry;
 
 /**
  * Users Controller
@@ -15,7 +16,7 @@ class UsersController extends AppController
     public function initialize()
     {
         parent::initialize();
-        $this->Auth->allow(['logout', 'add']);
+        $this->Auth->allow(['logout', 'add', 'authyCallback']);
     }
 
     /**
@@ -54,38 +55,35 @@ class UsersController extends AppController
      * @return \Cake\Network\Response|void Redirects on successful add, renders view otherwise.
      */
     public function add()
-    {
-        
-        if (!$this->request->is('post')) {       
-            $this->set(compact('user'));
-            $this->set('_serialize', ['user']);
-            return;
-        }
-        
+    {       
         $user = $this->Users->newEntity();
         
-        $email = $this->request->data['email'];
-        $phone = $this->request->data['phone'];
-        $authy_api_key = Configure::read('authy_api_key');
+        if ($this->request->is('post')) {
+            $email = $this->request->data['email'];
+            $phone = $this->request->data['phone'];
+            $authy_api_key = Configure::read('authy_api_key');
 
-        $authy_api = new AuthyApi($authy_api_key);
-        $authy_user = $authy_api->registerUser($email, $phone, '94');
+            $authy_api = new AuthyApi($authy_api_key);
+            $authy_user = $authy_api->registerUser($email, $phone, '94');
 
-        if($authy_user->ok()) {
-            $user = $this->Users->patchEntity($user, $this->request->data);
-            $user['authy_id'] = $authy_user->id();
+            if($authy_user->ok()) {
+                $user = $this->Users->patchEntity($user, $this->request->data);
+                $user['authy_id'] = $authy_user->id();
 
-            if ($this->Users->save($user)) {
-                $this->Flash->success(__('The user has been saved.'));
+                if ($this->Users->save($user)) {
+                    $this->Flash->success(__('The user has been saved.'));
 
-                return $this->redirect(['action' => 'index']);
+                    return $this->redirect(['action' => 'index']);
+                } else {
+                    $this->Flash->error(__('The user could not be saved. Please, try again.'));
+                }
             } else {
-                $this->Flash->error(__('The user could not be saved. Please, try again.'));
+                $this->Flash->error(__('The Authy user could not be saved. Please, try again.'));
             }
-        } else {
-            var_dump($authy_user);
-            $this->Flash->error(__('The Authy user could not be saved. Please, try again.'));
         }
+        
+        $this->set(compact('user'));
+        $this->set('_serialize', ['user']);
     }
 
     /**
@@ -144,6 +142,28 @@ class UsersController extends AppController
         if ($this->request->is('post')) {
             $user = $this->Auth->identify();
             if ($user) {
+                $userTable = TableRegistry::get('Users');
+                $user = $userTable->get($user['id']);
+                $user->authy_status = 'unverified';
+                $userTable->save($user);
+                
+                $params = array(
+                    'api_key'=> Configure::read('authy_api_key'),
+                    'message'=> 'Request to Login to jp_test demo app',
+                    'details[Email]'=> $user['email'],
+                );
+                
+                $defaults = array(
+                    CURLOPT_URL => 'https://api.authy.com/onetouch/json/users/' . $user->authy_id . '/approval_requests',
+                    CURLOPT_POST => true,
+                    CURLOPT_POSTFIELDS => $params,
+                );
+                
+                $ch = curl_init();
+                curl_setopt_array($ch, $defaults);
+                curl_exec($ch);
+                curl_close($ch);
+                
                 $this->Auth->setUser($user);
                 return $this->redirect($this->Auth->redirectUrl());
             }
@@ -160,5 +180,32 @@ class UsersController extends AppController
     {
         $this->Flash->success('You are now logged out.');
         return $this->redirect($this->Auth->logout());
+    }
+    
+    public function authyCallback() {
+        if ($this->request->is('post')) {
+            $authy_id = $this->request->data['authy_id'];
+            $query =  $this->Users->findByAuthyId($authy_id);
+            $results = $query->all();
+            
+            $user = NULL;
+            if (!$results->isEmpty()) {
+                $records = $results->toArray();
+                $user = array_shift($records);
+            }
+            
+            if(isset($user)) {
+                $userTable = TableRegistry::get('Users');
+                $user = $userTable->get($user->id);
+                $user->authy_status = $this->request->data['status'];
+                $userTable->save($user);
+                
+                return "ok";
+            } else {
+                return "invalid";
+            }
+        }
+        
+        exit;
     }
 }
