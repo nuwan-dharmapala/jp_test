@@ -24,17 +24,16 @@
         <div class='help-block'>
           <i class="fa fa-mobile"></i> Authy OneTouch not available
         </div>
+        
         <p>Please enter your Token</p>
-        <form id="authy-sms-form" class="form-horizontal" role="form" method="POST" action="/auth/twofactor">
-          <input type="hidden" name="_token" value="{{ csrf_token() }}">
+        <form id="authy-sms-form" class="form-horizontal" role="form" method="POST" action="/users/twofactor">
           <div class='form-group'>
             <label class="col-md-4 control-label" for="token">Authy Token</label>
             <div class='col-md-6'>
-              <input type="text" name="token" id="authy-token" ng-model="token" value="" class="form-control" autocomplete="off" />
+              <input type="text" name="token" id="authy-token" value="" class="form-control" autocomplete="off" />
             </div>
           </div>
-          <a value="Verify" class="btn btn-default" href="#" ng-click="cancel()">Cancel</a>
-          <input type="submit" name="commit" value="Verify2" class="btn btn-success" ng-click="verifyToken(token)" />
+          <input type="submit" name="commit" value="Verify" class="btn btn-success"  />
         </form>
     </div>
 </div>
@@ -42,9 +41,9 @@
 <script>
     $(document).ready(function() {
         $('#login-form').submit(function(e) {
-          e.preventDefault();
-          formData = $(e.currentTarget).serialize();
-          attemptOneTouchVerification(formData);
+            e.preventDefault();
+            formData = $(e.currentTarget).serialize();
+            attemptOneTouchVerification(formData);
         });
 
         var attemptOneTouchVerification = function(form) {
@@ -79,13 +78,13 @@
         };
 
         var showTokenForm = function() {
-          $('.auth-ot').fadeOut(function() {
-            $('.auth-token').fadeIn('slow');
-          });
+            $('.auth-ot').fadeOut(function() {
+                $('.auth-token').fadeIn('slow');
+            });
         };
 
         var triggerSMSToken = function() {
-          $.get("/authy/send_token");
+            $.get("/users/send_token");
         };
     });
     

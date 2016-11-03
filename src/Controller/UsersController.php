@@ -16,7 +16,7 @@ class UsersController extends AppController
     public function initialize()
     {
         parent::initialize();
-        $this->Auth->allow(['logout', 'add', 'authyCallback', 'loginAjax', 'authyStatus']);
+        $this->Auth->allow(['logout', 'add', 'authyCallback', 'loginAjax', 'authyStatus', 'twoFactor', 'sendToken']);
         $this->loadComponent('RequestHandler');
     }
 
@@ -245,5 +245,45 @@ class UsersController extends AppController
         $this->viewBuilder()->layout = 'ajax';
         $this->set(compact('output'));
         $this->set('_serialize', 'output');
+    }
+    
+    public function twoFactor() {
+        $session = $this->request->session();
+                
+        if(empty($session->read('Authy.Id'))) {
+            return $this->redirect(['action' => 'login']);
+        }
+        
+        if(isset($this->request->data['token'])) {
+            $authy_id = $session->read('Authy.Id');
+            $query =  $this->Users->findByAuthyId($authy_id);
+            $results = $query->all();
+            
+            $user = NULL;
+            if (!$results->isEmpty()) {
+                $records = $results->toArray();
+                $user = array_shift($records);
+            }
+            
+            if(isset($user) && $user->verifyToken($this->request->data['token'])) {
+                $this->Auth->setUser($user);
+                return $this->redirect($this->Auth->redirectUrl());
+            } else {
+                $this->Flash->error(__('Invalid Authy tocken. Please, try again.'));
+                return $this->redirect(['action' => 'login']);
+            }
+        }
+    }
+    
+    public function sendToken() {
+        $session = $this->request->session();
+        
+        $authy_api_key = Configure::read('authy_api_key');
+        $authy_api = new AuthyApi($authy_api_key);
+        
+        $authy_id = $session->read('Authy.Id');
+        $sms = $authy_api->requestSms($authy_id);
+        var_dump($sms);
+        exit;
     }
 }

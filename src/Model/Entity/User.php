@@ -1,6 +1,8 @@
 <?php
 namespace App\Model\Entity;
 
+use Authy\AuthyApi as AuthyApi;
+use Cake\Core\Configure;
 use Cake\Auth\DefaultPasswordHasher;
 use Cake\ORM\Entity;
 
@@ -43,5 +45,27 @@ class User extends Entity
     {
         $hasher = new DefaultPasswordHasher();
         return $hasher->hash($value);
+    }
+    
+    public function verifyToken($token) {
+        $authy_api_key = Configure::read('authy_api_key');
+        $authy_api = new AuthyApi($authy_api_key);
+        
+        try {
+            $verification = $authy_api->verifyToken($this->authy_id, $token);
+        }
+        catch (\Authy\AuthyFormatException $ex) {
+            return false;
+        }
+        catch (\Exeption $ex) {
+            return false;
+        }
+        
+
+        if(isset($verification) && $verification->ok()) {
+            return true;
+        } else {
+            return false;
+        }
     }
 }
