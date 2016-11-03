@@ -32,9 +32,12 @@ $cakeDescription = 'CakePHP: the rapid development php framework';
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
     
     <?= $this->Html->script('jquery-ui-1.12.1/jquery-ui.min.js'); ?>
+    <?= $this->Html->script('intlTelInput.min.js'); ?>
+    
     <?= $this->Html->css('jquery-ui.min.css'); ?>
     <?= $this->Html->css('jquery-ui.structure.min.css'); ?>
     <?= $this->Html->css('jquery-ui.theme.min.css'); ?>
+    <?= $this->Html->css('intlTelInput.css'); ?>
 
     <?= $this->fetch('meta') ?>
     <?= $this->fetch('css') ?>

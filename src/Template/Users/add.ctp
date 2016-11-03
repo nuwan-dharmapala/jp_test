@@ -11,9 +11,26 @@
         <?php
             echo $this->Form->input('email');
             echo $this->Form->input('password');
-            echo $this->Form->input('phone');
         ?>
+        <input type="hidden" id="country_idd" name="country_idd" />
+        <?=  $this->Form->input('phone') ?>
     </fieldset>
     <?= $this->Form->button(__('Submit')) ?>
     <?= $this->Form->end() ?>
 </div>
+
+<script>
+    $(document).ready(function() {
+        $("#phone").intlTelInput({
+            nationalMode: false,
+            separateDialCode: true,
+            initialCountry: "ae",
+            preferredCountries: [ "lk", "ae" ]
+        });
+        
+        $("#phone").blur(function() {
+            var countryData = $("#phone").intlTelInput("getSelectedCountryData");
+            $("#country_idd").val(countryData.dialCode);
+        });
+    });
+</script>

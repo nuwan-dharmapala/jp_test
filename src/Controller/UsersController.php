@@ -62,10 +62,11 @@ class UsersController extends AppController
         if ($this->request->is('post')) {
             $email = $this->request->data['email'];
             $phone = $this->request->data['phone'];
+            $county_code = $this->request->data['country_idd'];
             $authy_api_key = Configure::read('authy_api_key');
 
             $authy_api = new AuthyApi($authy_api_key);
-            $authy_user = $authy_api->registerUser($email, $phone, '94');
+            $authy_user = $authy_api->registerUser($email, $phone, $county_code);
 
             if($authy_user->ok()) {
                 $user = $this->Users->patchEntity($user, $this->request->data);
